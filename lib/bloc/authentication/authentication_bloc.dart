@@ -23,7 +23,6 @@ class AuthenticationBloc
       AuthenticationEvent event) async* {
     if (event is AppStarted) {
       final String uid = await userRepository.getUid();
-      print(uid);
       if (uid != null) {
         yield AuthenticationAuthenticated(uid: uid);
       } else {
@@ -34,7 +33,7 @@ class AuthenticationBloc
     if (event is LoginStart) {
       yield AuthenticationLoading();
       try {
-        final String uid = await userRepository.signInWithEmailAndPassword(
+        final String uid = await userRepository.loginWithEmailAndPassword(
           email: event.email,
           password: event.password,
         );
@@ -49,13 +48,40 @@ class AuthenticationBloc
       yield AuthenticationAuthenticated(uid: event.uid);
     }
 
+
     if (event is LoginError) {
       yield AuthenticationError(error: event.error);
     }
 
-    if (event is LoggedOut) {
+    if (event is LogoutStart) {
+      yield AuthenticationLoading();
+      await userRepository.logout();
+      dispatch(LogoutSuccess());
+    }
+
+    if (event is LogoutSuccess) {
       await userRepository.deleteUid();
       yield AuthenticationUnauthenticated();
+    }
+
+    if (event is RegisterStart) {
+      try {
+        yield AuthenticationLoading();
+        String uid = await userRepository.createUserWithEmailAndPassword(
+            event.email, event.password);
+        dispatch(RegisterSuccess(uid: uid));
+      } catch (e) {
+        dispatch(RegisterError(error: e.toString()));
+      }
+    }
+    
+    if (event is RegisterSuccess) {
+      await userRepository.persistUid(event.uid);
+      yield AuthenticationAuthenticated(uid: event.uid);
+    }
+
+    if (event is RegisterError) {
+      yield AuthenticationError(error: event.error);
     }
   }
 }

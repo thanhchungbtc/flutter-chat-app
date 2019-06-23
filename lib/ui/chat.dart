@@ -1,6 +1,9 @@
+import 'package:chat_app_flutter/bloc/authentication/authentication.dart';
+import 'package:chat_app_flutter/bloc/chat/chat.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -13,75 +16,30 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
 
-  String _fromUid, _toUid;
-  String _messageId;
-
-  @override
-  void initState() {
-    super.initState();
-    init();
-  }
-
-  void init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final fromUid = prefs.get('uid');
-    final Map<String, dynamic> args = ModalRoute.of(context).settings.arguments;
-    final toUid = args['toUserId'];
-
-    // construct thread id
-    final CollectionReference messagesRef =
-        Firestore.instance.collection('messages');
-    String messageId = "$fromUid-$toUid";
-    DocumentSnapshot messageSnapshot =
-        await messagesRef.document(messageId).get();
-    if (messageSnapshot == null || !messageSnapshot.exists) {
-      messageId = "$toUid-$fromUid";
-      messageSnapshot = await messagesRef.document(messageId).get();
-      if (messageSnapshot == null && !messageSnapshot.exists) {
-        await messagesRef.document(messageId).setData({
-          'items': [],
-        });
-      }
-    }
-    setState(() {
-      _messageId = messageId;
-    });
-
-    setState(() {
-      _fromUid = fromUid;
-      _toUid = toUid;
-    });
-  }
-
-  void _handleSendMessage(text) {
-    _textController.clear();
-    final message = ChatMessageWidget(
-      text: text,
-      isOutgoingMessage: true,
-    );
-
-    Firestore.instance
-        .collection('messages')
-        .document(_messageId)
-        .collection('items')
-        .document()
-        .setData({
-      'sent_from_id': _fromUid,
-      'content': text,
-      'sent_date': Timestamp.now(),
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final messageList = _messageId != null
-        ? StreamBuilder(
-            stream: Firestore.instance
-                .collection('messages')
-                .document(_messageId)
-                .collection('items')
-                .orderBy('sent_date', descending: true)
-                .snapshots(),
+    final ChatBloc chatBloc = BlocProvider.of(context);
+    final AuthenticationBloc authenticationBloc = BlocProvider.of(context);
+    String threadId;
+    if (chatBloc.currentState is MessagesLoaded) {
+      threadId = (chatBloc.currentState as MessagesLoaded).threadId;
+    }
+
+    final fromUid =
+        (authenticationBloc.currentState as AuthenticationAuthenticated).uid;
+
+    handleSendMessage(threadId, text) {
+      _textController.clear();
+      chatBloc.dispatch(SendMessageStart(
+          threadId: threadId, fromUid: fromUid, content: text));
+    }
+
+    final messageList = BlocBuilder(
+      bloc: chatBloc,
+      builder: (context, state) {
+        if (state is MessagesLoaded) {
+          return StreamBuilder(
+            stream: state.snapshots,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 final documents = snapshot.data.documents;
@@ -90,10 +48,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: documents.length,
                   reverse: true,
                   itemBuilder: (context, index) {
+                    final doc = documents[index];
                     return ChatMessageWidget(
-                      text: documents[index]['content'],
-                      isOutgoingMessage:
-                          documents[index]['sent_from_id'] == _fromUid,
+                      text: doc['content'],
+                      isOutgoingMessage: doc['sent_from_id'] == fromUid,
+//                      photoUrl: doc['photoUrl'],
                     );
                   },
                 );
@@ -101,8 +60,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 return Container();
               }
             },
-          )
-        : Container();
+          );
+        }
+        return Container();
+      },
+    );
 
     final composeText = IconTheme(
       data: IconThemeData(color: Theme.of(context).accentColor),
@@ -114,7 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: TextField(
                 controller: _textController,
                 onChanged: (String text) {},
-                onSubmitted: _handleSendMessage,
+                onSubmitted: (text) => handleSendMessage(threadId, text),
                 decoration:
                     InputDecoration.collapsed(hintText: 'Send a message'),
               ),
@@ -124,7 +86,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: IconButton(
                 icon: Icon(Icons.send),
                 onPressed: () {
-                  _handleSendMessage(_textController.text);
+                  handleSendMessage(threadId, _textController.text);
                 },
               ),
             )
@@ -154,8 +116,13 @@ class _ChatScreenState extends State<ChatScreen> {
 class ChatMessageWidget extends StatelessWidget {
   final String text;
   final bool isOutgoingMessage;
+//  final String photoUrl;
 
-  ChatMessageWidget({this.text, this.isOutgoingMessage});
+  ChatMessageWidget({
+    this.text,
+    this.isOutgoingMessage,
+//    this.photoUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +132,7 @@ class ChatMessageWidget extends StatelessWidget {
           margin: EdgeInsets.only(right: 8.0),
           child: CircleAvatar(
             radius: 16.0,
+//            backgroundImage: NetworkImage(photoUrl),
             child: Text(text[0]),
           ),
         ),

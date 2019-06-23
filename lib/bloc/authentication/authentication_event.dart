@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:meta/meta.dart';
 
 abstract class AuthenticationEvent extends Equatable {
@@ -23,10 +24,17 @@ class LoginSuccess extends AuthenticationEvent {
   }
 }
 
-class LoggedOut extends AuthenticationEvent {
+class LogoutStart extends AuthenticationEvent {
   @override
   String toString() {
-    return "LoggedOut";
+    return "LogoutStart";
+  }
+}
+
+class LogoutSuccess extends AuthenticationEvent {
+  @override
+  String toString() {
+    return "LogoutSuccess";
   }
 }
 
@@ -50,5 +58,34 @@ class LoginStart extends AuthenticationEvent {
   @override
   String toString() {
     return "LoginStart";
+  }
+}
+
+class RegisterStart extends AuthenticationEvent {
+  final String email, password;
+
+  RegisterStart({@required this.email, @required this.password})
+      : super([email, password]);
+}
+
+class RegisterSuccess extends AuthenticationEvent {
+  final String uid;
+
+  RegisterSuccess({@required this.uid}) : super([uid]);
+
+  @override
+  String toString() {
+    return "RegisterSuccess";
+  }
+}
+
+class RegisterError extends AuthenticationEvent {
+  final String error;
+
+  RegisterError({@required this.error}) : super([error]);
+
+  @override
+  String toString() {
+    return "RegisterError";
   }
 }

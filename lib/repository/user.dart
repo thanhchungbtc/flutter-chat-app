@@ -9,7 +9,7 @@ class UserRepository {
   FirebaseAuth _auth = FirebaseAuth.instance;
   Firestore _firestore = Firestore.instance;
 
-  Future<String> signInWithEmailAndPassword({
+  Future<String> loginWithEmailAndPassword({
     @required String email,
     @required String password,
   }) async {
@@ -39,6 +39,13 @@ class UserRepository {
     _firestore.collection('users').document(user.uid).setData(userData);
 
     return user.uid;
+  }
+  Future logout() async {
+    await _auth.signOut();
+  }
+
+  Stream<QuerySnapshot> userStream() {
+    return _firestore.collection('users').snapshots();
   }
 
   Future<String> getUid() async {
