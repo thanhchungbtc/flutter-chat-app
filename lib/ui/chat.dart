@@ -198,7 +198,7 @@ class ChatMessageWidget extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             shape: BoxShape.rectangle,
-            color: Colors.blue,
+            color: Theme.of(context).primaryColor,
             borderRadius: BorderRadius.circular(100),
           ),
         ),

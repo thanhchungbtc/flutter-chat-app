@@ -1,29 +1,63 @@
+import 'package:chat_app_flutter/repository/user.dart';
+import 'package:flutter/material.dart';
+import 'package:chat_app_flutter/bloc/authentication/authentication.dart';
 import 'package:chat_app_flutter/ui/chat.dart';
 import 'package:chat_app_flutter/ui/home.dart';
 import 'package:chat_app_flutter/ui/login.dart';
 import 'package:chat_app_flutter/ui/register.dart';
-import 'package:flutter/material.dart';
+import 'package:bloc/bloc.dart';
 
-void main() => runApp(MyApp());
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+void main() {
+  BlocSupervisor.delegate = SimpleBlocDelegate();
+  UserRepository userRepository = UserRepository();
+  runApp(BlocProvider<AuthenticationBloc>(
+    builder: (context) {
+      return AuthenticationBloc(userRepository: userRepository)
+        ..dispatch(AppStarted());
+    },
+    child: MyApp(),
+  ));
+}
+
+class SimpleBlocDelegate extends BlocDelegate {
+  @override
+  void onTransition(Bloc bloc, Transition transition) {
+    super.onTransition(bloc, transition);
+    print(transition);
+  }
+
+  @override
+  void onEvent(Bloc bloc, Object event) {
+    super.onEvent(bloc, event);
+    print(event);
+  }
+
+  @override
+  void onError(Bloc bloc, Object error, StackTrace stacktrace) {
+    super.onError(bloc, error, stacktrace);
+    print(error);
+  }
+}
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => LoginScreen(),
-        '/login': (context) => LoginScreen(),
-        '/register': (context) => RegisterScreen(),
-        '/home': (context) => HomeScreen(),
-        '/chat': (context) => ChatScreen(),
-      }
-    );
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.teal,
+        ),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => LoginScreen(),
+          '/login': (context) => LoginScreen(),
+          '/register': (context) => RegisterScreen(),
+          '/home': (context) => HomeScreen(),
+          '/chat': (context) => ChatScreen(),
+        });
   }
 }
 
