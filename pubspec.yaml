@@ -22,8 +22,8 @@ dependencies:
   firebase_auth:
   cloud_firestore:
   shared_preferences:
-  bloc:
-  flutter_bloc:
+  flutter_redux:
+  redux:
   equatable:
 
   # The following adds the Cupertino Icons font to your application.

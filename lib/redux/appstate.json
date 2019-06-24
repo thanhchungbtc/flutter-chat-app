@@ -1,0 +1,18 @@
+{
+    "login": {
+        "isLoading": false,
+        "isAuthenticated": false,
+        "user": null,
+        "error": null
+    },
+    "home": {
+        "isLoading": false,
+        "userStream": null,
+        "error": null
+    },
+    "chat": {
+        "isLoading": false,
+        "messageStream": null,
+        "error": null
+    }
+}
