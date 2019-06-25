@@ -33,12 +33,12 @@ class MessageRepository {
         .collection('messages')
         .document(threadId)
         .collection('items')
-        .orderBy('sent_date', descending: true)
+//        .orderBy('sent_timestamp', descending: true)
         .snapshots();
   }
 
-  void sendMessage(String threadId, Message message) {
-    _firestore
+  Future<void> sendMessage(String threadId, Message message) async {
+    return await _firestore
         .collection('messages')
         .document(threadId)
         .collection('items')

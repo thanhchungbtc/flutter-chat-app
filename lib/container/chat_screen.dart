@@ -33,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
           threadId: store.state.chat.threadId,
           uid: store.state.login.user.uid,
           onSubmitMessage: (text) {
+            print(store.state.chat.threadId);
             _textController.clear();
             store.dispatch(SendMessageRequestAction(
                 threadId: store.state.chat.threadId,
@@ -44,28 +45,32 @@ class _ChatScreenState extends State<ChatScreen> {
           }),
       builder: (context, vm) {
         print(vm.threadId);
-        final messageList = StreamBuilder(
-          stream: vm.messageStream,
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              final documents = snapshot.data.documents;
-              return ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                itemCount: documents.length,
-                reverse: true,
-                itemBuilder: (context, index) {
-                  return ChatMessageWidget(
-                    text: documents[index]['content'],
-                    isOutgoingMessage:
-                        documents[index]['sent_from_id'] == vm.uid,
-                  );
+        final messageList = vm.threadId != null
+            ? StreamBuilder<QuerySnapshot>(
+                stream: vm.messageStream,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    print("SNAPSHOT");
+                    print(snapshot.data.documents.length);
+                    final documents = snapshot.data.documents;
+                    return ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 16.0),
+                      itemCount: documents.length,
+                      reverse: true,
+                      itemBuilder: (context, index) {
+                        return ChatMessageWidget(
+                          text: documents[index]['content'],
+                          isOutgoingMessage:
+                              documents[index]['sent_from_id'] == vm.uid,
+                        );
+                      },
+                    );
+                  } else {
+                    return Container();
+                  }
                 },
-              );
-            } else {
-              return Container();
-            }
-          },
-        );
+              )
+            : Container();
 
         final composeText = IconTheme(
           data: IconThemeData(color: Theme.of(context).accentColor),
@@ -87,7 +92,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: IconButton(
                     icon: Icon(Icons.send),
                     onPressed: () {
-                      print("PRESS");
                       vm.onSubmitMessage(_textController.text);
                     },
                   ),

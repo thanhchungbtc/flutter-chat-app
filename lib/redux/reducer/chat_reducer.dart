@@ -27,11 +27,12 @@ ChatState chatReducer(ChatState state, action) {
     return ChatState.init()..isLoading = true;
   }
   if (action is FetchMessagesRequestSuccessAction) {
-
-    return ChatState.init()..messageStream = action.messageStream;
+    return ChatState.init()
+      ..messageStream = action.messageStream
+      ..threadId = action.threadId;
   }
   if (action is FetchMessagesRequestErrorAction) {
-    return ChatState();
+    return ChatState.init()..error = action.error;
   }
   return state;
 }
