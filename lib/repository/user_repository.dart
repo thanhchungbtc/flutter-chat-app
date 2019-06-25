@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:chat_app_flutter/model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,27 +12,26 @@ class UserRepository {
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
         _firestore = firestore ?? Firestore.instance;
 
-  Future<User> signInWithCredentials(String email, String password) async {
-    return _getUserFromFirebaseUser(
-      await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      ),
+  Future<FirebaseUser> signInWithCredentials(
+      {String email, String password}) async {
+    return await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
     );
   }
 
-  Future<User> signUp({String email, String password}) async {
+  Future<FirebaseUser> signUp({String email, String password}) async {
     final fbUser = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
-    final user = _getUserFromFirebaseUser(fbUser);
-    await _firestore.collection('users').document(user.uid).setData({
+    await _firestore.collection('users').document(fbUser.uid).setData({
       'uid': fbUser.uid,
+      'email': fbUser.email,
       'displayName': fbUser.displayName,
-      'photoUrl': '',
+      'photoUrl': fbUser.photoUrl,
     });
-    return user;
+    return fbUser;
   }
 
   Future<void> signOut() async {
@@ -47,21 +45,11 @@ class UserRepository {
     return currentUser != null;
   }
 
-  Future<User> getUser() async {
-    return _getUserFromFirebaseUser(
-      await _firebaseAuth.currentUser(),
-    );
+  Future<FirebaseUser> getUser() async {
+    return await _firebaseAuth.currentUser();
   }
 
   Stream<QuerySnapshot> getUserStream() {
     return _firestore.collection('users').snapshots();
-  }
-
-  User _getUserFromFirebaseUser(FirebaseUser user) {
-    return User(
-      uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-    );
   }
 }

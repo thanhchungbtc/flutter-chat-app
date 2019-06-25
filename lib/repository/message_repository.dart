@@ -11,15 +11,13 @@ class MessageRepository {
   Future<String> getOrCreateThreadId({String fromUid, String toUid}) async {
     String threadId = "$fromUid-$toUid";
 
-    final CollectionReference messagesRef =
-    Firestore.instance.collection('messages');
-    DocumentSnapshot messageSnapshot =
-        await messagesRef.document(threadId).get();
-    if (messageSnapshot == null || !messageSnapshot.exists) {
+    var snapshot =
+        await _firestore.collection('messages').document(threadId).get();
+    if (snapshot == null || !snapshot.exists) {
       threadId = "$toUid-$fromUid";
-      messageSnapshot = await messagesRef.document(threadId).get();
-      if (messageSnapshot == null && !messageSnapshot.exists) {
-        await messagesRef.document(threadId).setData({
+      snapshot =  await _firestore.collection('messages').document(threadId).get();
+      if (snapshot == null && !snapshot.exists) {
+        await _firestore.collection('messages').document(threadId).setData({
           'items': [],
         });
       }
@@ -33,11 +31,11 @@ class MessageRepository {
         .collection('messages')
         .document(threadId)
         .collection('items')
-//        .orderBy('sent_timestamp', descending: true)
+        .orderBy('sent_timestamp', descending: true)
         .snapshots();
   }
 
-  Future<void> sendMessage(String threadId, Message message) async {
+  void sendMessage(String threadId, Message message) async {
     return await _firestore
         .collection('messages')
         .document(threadId)

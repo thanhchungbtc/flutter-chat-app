@@ -16,8 +16,3 @@ class Message {
     };
   }
 }
-
-class User {
-  String uid, displayName, email;
-  User({this.uid, this.displayName, this.email});
-}
