@@ -1,5 +1,4 @@
 import 'package:chat_app_flutter/bloc/auth_bloc.dart';
-import 'package:chat_app_flutter/bloc/login_bloc.dart';
 import 'package:chat_app_flutter/ui/widget/loading_indication.dart';
 import 'package:chat_app_flutter/ui/widget/login_form.dart';
 import 'package:flutter/material.dart';
@@ -16,17 +15,18 @@ class LoginScreen extends StatelessWidget {
           return;
         }
       },
-      child: BlocBuilder<LoginEvent, LoginState>(
-          bloc: BlocProvider.of<LoginBloc>(context),
+      child: BlocBuilder<AuthEvent, AuthState>(
+          bloc: BlocProvider.of<AuthBloc>(context),
           builder: (context, state) {
             return Scaffold(
               resizeToAvoidBottomPadding: false,
               appBar: AppBar(title: Text('Login')),
               body: Stack(
                 children: [
-                  LoginForm(),
+                  LoginForm(errorMsg: state.errorMsg),
                   Positioned(
-                      child: LoadingIndicator(isLoading: state.isLoading)),
+                    child: LoadingIndicator(isLoading: state.isLoading),
+                  ),
                 ],
               ),
             );

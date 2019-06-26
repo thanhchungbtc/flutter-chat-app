@@ -1,5 +1,4 @@
-import 'package:chat_app_flutter/bloc/register_bloc.dart';
-import 'package:chat_app_flutter/ui/widget/loading_indication.dart';
+import 'package:chat_app_flutter/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -24,15 +23,14 @@ class _RegisterFormState extends State<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
-    final RegisterBloc bloc = BlocProvider.of<RegisterBloc>(context);
-
-    return BlocBuilder<RegisterEvent, RegisterState>(
+    final AuthBloc bloc = BlocProvider.of<AuthBloc>(context);
+    return BlocBuilder<AuthEvent, AuthState>(
       bloc: bloc,
       builder: (context, state) {
         onRegisterButtonPresed() {
           if (_formKey.currentState.validate()) {
             FocusScope.of(context).requestFocus(FocusNode());
-            bloc.dispatch(RegisterEventSubmitted(
+            bloc.dispatch(AuthEventSignUp(
               email: _emailController.text,
               password: _passwordController.text,
             ));
@@ -97,8 +95,6 @@ class _RegisterFormState extends State<RegisterForm> {
           ),
         );
 
-
-
         var registerButton = Padding(
           padding: const EdgeInsets.only(top: 32.0),
           child: MaterialButton(
@@ -120,7 +116,7 @@ class _RegisterFormState extends State<RegisterForm> {
             ? Padding(
                 padding: EdgeInsets.all(32.0),
                 child: Text(
-                  state.error,
+                  state.errorMsg,
                   style: TextStyle(color: Colors.red),
                 ),
               )

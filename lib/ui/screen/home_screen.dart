@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:chat_app_flutter/bloc/auth_bloc.dart';
 import 'package:chat_app_flutter/bloc/chat_bloc.dart';
 import 'package:chat_app_flutter/bloc/home_bloc.dart';
+import 'package:chat_app_flutter/model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,13 +15,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   HomeBloc homeBloc;
+  String loginUid;
 
   @override
   void initState() {
     super.initState();
     homeBloc = BlocProvider.of<HomeBloc>(context)
-      ..dispatch(HomeEventFetchUsers());
-    ;
+      ..dispatch(HomeEventFetchUserStream());
+    final authBloc = BlocProvider.of<AuthBloc>(context);
+    if (authBloc.currentState.isAuthenticated()) {
+      loginUid = authBloc.currentState.uid;
+    } else {
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
   }
 
   @override
@@ -30,41 +39,51 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.of(context).pushReplacementNamed('/login');
         }
       },
-      child: BlocBuilder(
+      child: BlocBuilder<HomeEvent, HomeState>(
           bloc: homeBloc,
-          builder: (context, snapshot) {
+          builder: (context, state) {
             return Scaffold(
                 appBar: AppBar(
                   title: Text('Home'),
                   actions: <Widget>[
                     IconButton(
                       icon: Icon(Icons.exit_to_app),
-                      onPressed: () => BlocProvider.of<AuthBloc>(context).dispatch(AuthEventSignedOut()),
-
+                      onPressed: () {
+                        BlocProvider.of<AuthBloc>(context).dispatch(
+                          AuthEventSignOut(
+                            completeCallback: () => Navigator.of(context)
+                                .pushReplacementNamed('/login'),
+                          ),
+                        );
+                      },
                     )
                   ],
                 ),
                 body: StreamBuilder<QuerySnapshot>(
-                  stream: homeBloc.currentState.userStream,
-                  builder: (conext, qs) {
+                  stream: state.userStream,
+                  builder: (context, qs) {
                     if (!qs.hasData) {
                       return Container();
                     }
-                    final documents = qs.data.documents;
-                    final uid = BlocProvider.of<AuthBloc>(context).currentState.uid;
-                    print(uid);
+                    final users = qs.data.documents;
+                    final loginUid =
+                        BlocProvider.of<AuthBloc>(context).currentState.uid;
                     return ListView.builder(
-                      itemCount: documents.length,
+                      itemCount: users.length,
                       itemBuilder: (context, index) {
-                        final item = documents[index];
-                        if (item['uid'] == uid) return Container();
+                        final user = User.fromMap(users[index].data);
+                        final toUid = user.uid;
+                        if (toUid == loginUid) return Container();
                         return ListTile(
-                          title: Text(item['email'] ?? ''),
+                          title: Text(user.email),
                           onTap: () {
                             Navigator.of(context).pushNamed('/chat');
+                            String threadId = loginUid.compareTo(toUid) < 0
+                                ? "$loginUid-$toUid"
+                                : "$toUid-$loginUid";
                             BlocProvider.of<ChatBloc>(context).dispatch(
-                                ChatEventFetchMessages(
-                                    fromUid: uid, toUid: item['uid']));
+                                ChatEventFetchMessageStream(
+                                    threadId: threadId));
                           },
                         );
                       },

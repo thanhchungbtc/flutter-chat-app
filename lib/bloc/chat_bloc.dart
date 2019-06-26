@@ -7,100 +7,55 @@ import 'package:meta/meta.dart';
 
 abstract class ChatEvent {}
 
-class ChatEventFetchMessages extends ChatEvent {
-  final String fromUid, toUid;
+class ChatEventFetchMessageStream extends ChatEvent {
+  final String threadId;
 
-  ChatEventFetchMessages({this.fromUid, this.toUid});
+  ChatEventFetchMessageStream({@required this.threadId});
 }
 
 class ChatEventSendMessage extends ChatEvent {
-  final String content, fromUid, threadId;
+  final String threadId;
+  final Message message;
 
-  ChatEventSendMessage({@required this.content, @required this.fromUid, @required this.threadId});
+  ChatEventSendMessage({@required this.threadId, @required this.message});
 }
 
 class ChatState {
-  bool isLoading, isSending;
-  String threadId, fromUid, toUid;
-  String composeMessageContent;
+  bool isSending;
+  String threadId;
   Stream<QuerySnapshot> messageStream;
-  String error;
+  String errorMsg;
 
   ChatState({
-    this.error,
-    this.messageStream,
-    this.threadId,
-    this.fromUid,
-    this.toUid,
-    this.isLoading,
-    this.isSending,
+    this.errorMsg = '',
+    this.messageStream = const Stream.empty(),
+    this.threadId = '',
+    this.isSending = false,
   });
 
-  factory ChatState.init() {
-    return ChatState(
-      isLoading: false,
-      isSending: false,
-      fromUid: '',
-      toUid: '',
-      error: '',
-      messageStream: null,
-      threadId: '',
-    );
-  }
+  ChatState _setProps({
+    String errorMsg,
+    Stream messageStream,
+    String threadId,
+    bool isSending,
+  }) =>
+      ChatState(
+        errorMsg: errorMsg ?? '',
+        messageStream: messageStream ?? this.messageStream,
+        threadId: threadId ?? this.threadId,
+        isSending: isSending ?? this.isSending,
+      );
 
-  factory ChatState.loading() {
-    return ChatState(
-      isLoading: true,
-      isSending: false,
-      fromUid: '',
-      toUid: '',
-      error: '',
-      messageStream: null,
-      threadId: '',
-    );
-  }
+  factory ChatState.init() => ChatState();
 
-  factory ChatState.success(String fromUid, String toUid, String threadId,
-      Stream stream) {
-    return ChatState(
-      isLoading: false,
-      isSending: false,
-      fromUid: fromUid,
-      toUid: toUid,
-      threadId: threadId,
-      messageStream: stream,
-      error: '',
-    );
-  }
+  ChatState sending() => _setProps(isSending: true);
 
-  factory ChatState.error(String str) {
-    return ChatState(
-      isLoading: false,
-      isSending: false,
-      fromUid: '',
-      toUid: '',
-      error: str,
-      threadId: '',
-      messageStream: null,
-    );
-  }
-  factory ChatState.from(ChatState state) {
-    return ChatState(
-      isLoading: state.isLoading,
-      isSending: state.isSending,
-      fromUid: state.fromUid,
-      toUid: state.toUid,
-      error: state.error,
-      threadId: state.threadId,
-      messageStream: state.messageStream,
-    );
-  }
-  factory ChatState.sending(ChatState state) {
-    return ChatState.from(state)..isSending=true;
-  }
-  factory ChatState.sent(ChatState state) {
-    return ChatState.from(state)..isSending=false;
-  }
+  ChatState sent() => _setProps(isSending: false);
+
+  ChatState error(String errorMsg) => _setProps(errorMsg: errorMsg);
+
+  ChatState stream(String threadId, Stream stream) =>
+      _setProps(messageStream: stream, threadId: threadId);
 }
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
@@ -113,30 +68,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   @override
   Stream<ChatState> mapEventToState(ChatEvent event) async* {
-    if (event is ChatEventFetchMessages) {
+    if (event is ChatEventFetchMessageStream) {
       try {
-        yield ChatState.loading();
-        final threadId = await messageRepository.getOrCreateThreadId(
-            fromUid: event.fromUid, toUid: event.toUid);
-        print(threadId);
-
-        final stream = messageRepository.getMessageStream(threadId);
-        yield ChatState.success(event.fromUid, event.toUid, threadId, stream);
+        final stream = messageRepository.getMessageStream(event.threadId);
+        yield currentState.stream(event.threadId, stream);
       } catch (e) {
-        yield ChatState.error(e.toString());
+        yield currentState.error(e.toString());
       }
     }
     if (event is ChatEventSendMessage) {
-      yield ChatState.sending(currentState);
-      await messageRepository.sendMessage(
-        event.threadId,
-        Message(
-          content: event.content,
-          sentTimestamp: Timestamp.now(),
-          sentFromId: event.fromUid,
-        ),
-      );
-      yield ChatState.sent(currentState);
+      yield currentState.sending();
+      await messageRepository.sendMessage(event.threadId, event.message);
+      yield currentState.sent();
     }
   }
 }

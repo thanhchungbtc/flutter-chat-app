@@ -1,5 +1,6 @@
 import 'package:chat_app_flutter/bloc/auth_bloc.dart';
 import 'package:chat_app_flutter/bloc/chat_bloc.dart';
+import 'package:chat_app_flutter/model.dart';
 import 'package:chat_app_flutter/ui/widget/chat_message.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -11,14 +12,14 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  String uid;
+  String loginUid;
 
   @override
   void initState() {
     super.initState();
     final authBloc = BlocProvider.of<AuthBloc>(context);
     if (authBloc.currentState.isAuthenticated()) {
-      uid = authBloc.currentState.uid;
+      loginUid = authBloc.currentState.uid;
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }
@@ -29,25 +30,19 @@ class _ChatScreenState extends State<ChatScreen> {
     return BlocBuilder<ChatEvent, ChatState>(
         bloc: BlocProvider.of<ChatBloc>(context),
         builder: (context, state) {
-          if (state.isLoading) {
-            return Scaffold(
-              appBar: AppBar(title: Text('Chat')),
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
           return Scaffold(
             appBar: AppBar(title: Text('Chat')),
             body: SafeArea(
               child: Column(
                 children: <Widget>[
                   Expanded(
-                    child: ChatMessageListWidget(),
+                    child: ChatMessageListWidget(
+                      loginUid: loginUid,
+                    ),
                   ),
                   Divider(),
                   ComposeMessageWidget(
-                    uid: uid,
+                    uid: loginUid,
                     threadId: state.threadId,
                   ),
                 ],
@@ -59,33 +54,29 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 class ChatMessageListWidget extends StatelessWidget {
-  final String uid;
+  final String loginUid;
 
-  ChatMessageListWidget({this.uid});
+  ChatMessageListWidget({this.loginUid});
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ChatEvent, ChatState>(
       bloc: BlocProvider.of<ChatBloc>(context),
       builder: (context, state) {
-        if (state.isLoading) {
-          return Container();
-        }
         return StreamBuilder<QuerySnapshot>(
           stream: state.messageStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData) return Container();
-            final documents = snapshot.data.documents;
-            print("LENGTH ${documents.length}");
+            final messages = snapshot.data.documents;
             return ListView.builder(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
-              itemCount: documents.length,
+              itemCount: messages.length,
               reverse: true,
               itemBuilder: (context, index) {
-                final doc = documents[index];
+                final message = Message.fromMap(messages[index].data);
                 return ChatMessageWidget(
-                  text: doc['content'],
-                  isOutgoingMessage: doc['sent_from_id'] == uid,
+                  text: message.content,
+                  isOutgoingMessage: message.fromUid == loginUid,
                 );
               },
             );
@@ -122,10 +113,8 @@ class _ComposeMessageWidgetState extends State<ComposeMessageWidget> {
     }
     _textController.clear();
     BlocProvider.of<ChatBloc>(context).dispatch(ChatEventSendMessage(
-      threadId: widget.threadId,
-      content: content,
-      fromUid: widget.uid,
-    ));
+        threadId: widget.threadId,
+        message: Message.create(widget.uid, content)));
   }
 
   @override

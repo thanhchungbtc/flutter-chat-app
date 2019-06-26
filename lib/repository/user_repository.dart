@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:chat_app_flutter/model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,15 +13,15 @@ class UserRepository {
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
         _firestore = firestore ?? Firestore.instance;
 
-  Future<FirebaseUser> signInWithCredentials(
-      {String email, String password}) async {
-    return await _firebaseAuth.signInWithEmailAndPassword(
+  Future<User> signInWithCredentials({String email, String password}) async {
+    final fbUser = await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+    return User.fromFirebaseUser(fbUser);
   }
 
-  Future<FirebaseUser> signUp({String email, String password}) async {
+  Future<User> signUp({String email, String password}) async {
     final fbUser = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -31,7 +32,7 @@ class UserRepository {
       'displayName': fbUser.displayName,
       'photoUrl': fbUser.photoUrl,
     });
-    return fbUser;
+    return User.fromFirebaseUser(fbUser);
   }
 
   Future<void> signOut() async {
@@ -45,11 +46,13 @@ class UserRepository {
     return currentUser != null;
   }
 
-  Future<FirebaseUser> getUser() async {
-    return await _firebaseAuth.currentUser();
+  Future<User> getUser() async {
+    return User.fromFirebaseUser(await _firebaseAuth.currentUser());
   }
 
   Stream<QuerySnapshot> getUserStream() {
-    return _firestore.collection('users').snapshots();
+    return _firestore
+        .collection('users')
+        .snapshots();
   }
 }

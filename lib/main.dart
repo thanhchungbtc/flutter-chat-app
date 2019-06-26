@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'bloc/auth_bloc.dart';
-import 'bloc/login_bloc.dart';
-import 'bloc/register_bloc.dart';
 import 'repository/user_repository.dart';
 import 'ui/screen/chat_screen.dart';
 import 'ui/screen/home_screen.dart';
@@ -22,18 +20,6 @@ void main() {
         ..dispatch(AuthEventAppStarted()),
       child: BlocProviderTree(
         blocProviders: [
-          BlocProvider<LoginBloc>(
-            builder: (context) => LoginBloc(
-                  userRepository: userRepository,
-                  authBloc: BlocProvider.of<AuthBloc>(context),
-                ),
-          ),
-          BlocProvider<RegisterBloc>(
-            builder: (context) => RegisterBloc(
-                  userRepository: userRepository,
-                  authBloc: BlocProvider.of<AuthBloc>(context),
-                ),
-          ),
           BlocProvider<HomeBloc>(
             builder: (context) => HomeBloc(
               userRepository: userRepository,
@@ -57,7 +43,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       initialRoute: '/',
       routes: {
-        '/': (context) => HomeScreen(),
+        '/': (context) => LoginScreen(),
         '/login': (context) => LoginScreen(),
         '/register': (context) => RegisterScreen(),
         '/home': (context) => HomeScreen(),

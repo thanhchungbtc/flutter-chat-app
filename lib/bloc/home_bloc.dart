@@ -1,56 +1,55 @@
 import 'package:bloc/bloc.dart';
+import 'package:chat_app_flutter/model.dart';
 import 'package:chat_app_flutter/repository/user_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 
 abstract class HomeEvent {}
 
-class HomeEventFetchUsers extends HomeEvent {}
+class HomeEventFetchUserStream extends HomeEvent {}
 
 @immutable
 class HomeState {
-  final Stream<QuerySnapshot> userStream;
-  final String error;
-  HomeState({this.userStream, this.error});
+  Stream<QuerySnapshot> userStream;
+  String errorMsg;
 
-  factory HomeState.init() {
-    return HomeState(
-      userStream: null,
-      error: null,
-    );
-  }
+  HomeState({
+    this.userStream = const Stream.empty(),
+    this.errorMsg = '',
+  });
 
-  factory HomeState.success(Stream stream) {
-    return HomeState(
-      userStream: stream,
-      error: null,
-    );
-  }
+  HomeState _setProps({
+    Stream userStream,
+    String errorMSg,
+  }) =>
+      HomeState(
+        userStream: userStream ?? this.userStream,
+        errorMsg: errorMSg ?? '',
+      );
 
-  factory HomeState.error(String str) {
-    return HomeState(
-      error: str,
-      userStream: null,
-    );
-  }
+  factory HomeState.init() => HomeState();
+
+  HomeState stream(Stream stream) => _setProps(userStream: stream);
+
+  HomeState error(String errorMsg) => _setProps(errorMSg: errorMsg);
 }
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   UserRepository userRepository;
 
-  HomeBloc({this.userRepository});
+  HomeBloc({@required this.userRepository});
 
   @override
   HomeState get initialState => HomeState.init();
 
   @override
   Stream<HomeState> mapEventToState(HomeEvent event) async* {
-    if (event is HomeEventFetchUsers) {
+    if (event is HomeEventFetchUserStream) {
       try {
         final stream = userRepository.getUserStream();
-        yield HomeState.success(stream);
+        yield currentState.stream(stream);
       } catch (e) {
-        yield HomeState.error(e.toString());
+        yield currentState.error(e.toString());
       }
     }
   }

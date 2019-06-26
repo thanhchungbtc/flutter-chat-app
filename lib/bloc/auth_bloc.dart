@@ -7,43 +7,66 @@ abstract class AuthEvent extends Equatable {}
 
 class AuthEventAppStarted extends AuthEvent {}
 
-class AuthEventSignedIn extends AuthEvent {
-  final String uid;
+class AuthEventSignIn extends AuthEvent {
+  final String email, password;
 
-  AuthEventSignedIn({@required this.uid});
+  AuthEventSignIn({@required this.email, @required this.password});
 }
 
-class AuthEventSignedOut extends AuthEvent {}
+class AuthEventSignUp extends AuthEvent {
+  final String email, password;
+
+  AuthEventSignUp({@required this.email, @required this.password});
+}
+
+class AuthEventSignOut extends AuthEvent {
+  final Function() completeCallback;
+
+  AuthEventSignOut({this.completeCallback});
+}
 
 class AuthState {
-  String uid, error;
+  String uid;
+  String errorMsg;
+  String email;
+  String password;
+  bool isLoading;
 
-  AuthState({this.uid, this.error});
+  AuthState({
+    this.uid = '',
+    this.errorMsg = '',
+    this.email = '',
+    this.password = '',
+    this.isLoading = false,
+  });
 
-  bool isAuthenticated() {
-    return !uid.isEmpty;
-  }
+  bool isAuthenticated() => uid.isNotEmpty;
 
-  factory AuthState.init() {
-    return AuthState(
-      uid: "",
-      error: "",
-    );
-  }
+  bool hasError() => errorMsg.isNotEmpty;
 
-  factory AuthState.authenticated({@required String uid}) {
-    return AuthState(
-      uid: uid,
-      error: "",
-    );
-  }
+  AuthState _setProps(
+          {String uid,
+          String errorMsg,
+          String email,
+          String password,
+          bool isLoading}) =>
+      AuthState(
+        uid: uid ?? this.uid,
+        errorMsg: errorMsg ?? '',
+        email: email ?? this.email,
+        password: password ?? this.password,
+        isLoading: isLoading ?? this.isLoading,
+      );
 
-  factory AuthState.unauthenticated({String error}) {
-    return AuthState(
-      uid: "",
-      error: error,
-    );
-  }
+  factory AuthState.init() => AuthState();
+
+  AuthState success({@required String uid}) =>
+      _setProps(uid: uid, isLoading: false);
+
+  AuthState unauthenticated(String errorMsg) =>
+      AuthState.init()..errorMsg = errorMsg;
+
+  AuthState submitting() => _setProps(isLoading: true);
 }
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -59,10 +82,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (event is AuthEventAppStarted) {
       yield* _mapAppStartedToState(event);
     }
-    if (event is AuthEventSignedIn) {
-      yield* _mapSignedInToState(event);
+    if (event is AuthEventSignIn) {
+      yield* _mapSignInToState(event);
     }
-    if (event is AuthEventSignedOut) {
+    if (event is AuthEventSignUp) {
+      yield* _mapSignUpToState(event);
+    }
+    if (event is AuthEventSignOut) {
       yield* _mapSignedOutToState(event);
     }
   }
@@ -72,29 +98,50 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       bool isSignedIn = await userRepository.isSignedIn();
       if (isSignedIn) {
         final user = await userRepository.getUser();
-        yield (AuthState.authenticated(uid: user.uid));
+        yield (currentState.success(uid: user.uid));
       } else {
-        yield (AuthState.unauthenticated());
+        yield (currentState.unauthenticated(''));
       }
     } catch (e) {
-      yield AuthState.unauthenticated(error: e.toString());
+      yield currentState.unauthenticated(e.toString());
     }
   }
 
-  Stream<AuthState> _mapSignedInToState(AuthEventSignedIn event) async* {
+  Stream<AuthState> _mapSignInToState(AuthEventSignIn event) async* {
     try {
-      yield AuthState.authenticated(uid: event.uid);
+      yield currentState.submitting();
+      final user = await userRepository.signInWithCredentials(
+        email: event.email,
+        password: event.password,
+      );
+      yield currentState.success(uid: user.uid);
     } catch (e) {
-      yield AuthState.unauthenticated(error: e.toString());
+      yield currentState.unauthenticated(e.toString());
     }
   }
 
-  Stream<AuthState> _mapSignedOutToState(AuthEventSignedOut event) async* {
+  Stream<AuthState> _mapSignUpToState(AuthEventSignUp event) async* {
+    try {
+      yield currentState.submitting();
+      final user = await userRepository.signUp(
+        email: event.email,
+        password: event.password,
+      );
+      yield currentState.success(uid: user.uid);
+    } catch (e) {
+      yield currentState.unauthenticated(e.toString());
+    }
+  }
+
+  Stream<AuthState> _mapSignedOutToState(AuthEventSignOut event) async* {
     try {
       await userRepository.signOut();
-      yield AuthState.unauthenticated();
+      yield currentState.unauthenticated('');
+      if (event.completeCallback != null) {
+        event.completeCallback();
+      }
     } catch (e) {
-      yield AuthState.unauthenticated(error: e.toString());
+      yield currentState.unauthenticated(e.toString());
     }
   }
 }
